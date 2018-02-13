@@ -15,26 +15,18 @@
 ; The value awaited will be delivered to the promise when the lock is released
 (defonce ^:no-doc waits (ref {}))
 
-(defn- waiting
+(defn- waiting!
   "Add the given promise to any already waiting on the
-  specified value"
+  specified value. Must be called from within a transaction."
   [val prom]
   (if-let [waiters (get @waits val)]
     (alter waits assoc val (conj waiters prom))
     (alter waits assoc val #{prom})))
 
-(defn- get-waiter
-  "Return a single waiter's promise for the given val, or nil if there are no
-  waiters. Must be called from within a transaction."
-  [val]
-  (let [waiters (ensure waits)]
-    (-> (get waiters val)
-        first)))
-
 (defn- get-waiter!
   "Return a single waiter's promise for the given val, or nil if there are no
-  waiters. Modifies the waiters by removing the promise. Must be called from
-  within a transaction."
+  waiters. Modifies the waiters by removing the promise, removing the wait entry
+  if there are none left. Must be called from within a transaction."
   [val]
   (let [waiters (get @waits val)
         prom    (first waiters)]
@@ -42,15 +34,16 @@
       (let [new-waiters (disj waiters prom)]
         (if (empty? new-waiters)
           (alter waits dissoc val)
-          (alter waits assoc val new-waiters))))))
+          (alter waits assoc val new-waiters))))
+    prom))
 
-(defn- not-waiting
+(defn- not-waiting!
   "Remove the given promise from any waiting on the
-  specified value. If notify is supplied then check for
+  specified value. If notify is true then check for
   any further waiters on this val and deliver to one
   if the given promise is already realized.
   Must be called from within a transaction"
-  ([val prom] (not-waiting val prom false))
+  ([val prom] (not-waiting! val prom false))
   ([val prom notify]
     (when prom
       (let [waiters (-> (get @waits val)
@@ -59,7 +52,7 @@
           (alter waits dissoc val)
           (alter waits assoc val waiters))
         (when (and notify (realized? prom))
-          (when-let [waiter (get-waiter val)]
+          (when-let [waiter (get-waiter! val)]
             (deliver waiter val)))))))
 
 (defn- at-least-zero
@@ -69,12 +62,12 @@
   (let [ret (- x y)]
     (if (neg? ret) 0 ret)))
 
-(defn lock
+(defn lock!
   "Attempt to lock the given value obtaining the lock if it is available
   or waiting the specified timeout in milliseconds otherwise. A timeout
   of zero means unwilling to wait; negative means wait indefinitely.
   Returns the value as truthy if the lock was obtained, false otherwise."
-  ([val] (lock val -1))
+  ([val] (lock! val -1))
   ([val timeout]
    (when-not val
      (throw (Exception. "Cannot lock falsy")))
@@ -94,14 +87,14 @@
                (if (or (neg? @rem-timeout)                  ; lock held elsewhere
                        (> @rem-timeout 0))
                  (do
-                   (reset! wait-promise (promise))          ; willing to wait for it
-                   (waiting val @wait-promise))
+                   (when-not @wait-promise
+                     (reset! wait-promise (promise))          ; willing to wait for it
+                     (waiting! val @wait-promise)))
                  (do
                    (reset! ret-val :timeout)                ; not (or no longer) willing to wait
-                   (not-waiting val @wait-promise)
+                   (not-waiting! val @wait-promise)
                    (reset! wait-promise false))))
-             (do
-               (not-waiting val @wait-promise)              ; We have the lock
+             (do                                            ; Lock is available. Claim it.
                (reset! wait-promise false)
                (alter locks assoc val (Thread/currentThread))
                (alter lock-count assoc val 1)
@@ -113,7 +106,7 @@
                (reset! ret-val (deref @wait-promise @rem-timeout :timeout)) ; wait a finite time (could be zero)
                (if (= @ret-val :timeout)
                  (do
-                   (dosync (not-waiting val @wait-promise true)) ; giving up
+                   (dosync (not-waiting! val @wait-promise true)) ; giving up
                    (reset! wait-promise false))
                  (do                                        ; offered the lock, loop round to acquire
                    (reset! rem-timeout
@@ -121,7 +114,6 @@
                                                           @cur-time)))
                    (reset! cur-time (System/currentTimeMillis))
                    (reset! ret-val false)
-                   (dosync (not-waiting val @wait-promise))
                    (reset! wait-promise false))))))))
      (if (= @ret-val :timeout) false val))))
 
@@ -131,12 +123,12 @@
   [val]
   (= (Thread/currentThread) (get @locks val)))
 
-(defn unlock
+(defn unlock!
   "Unlock the value. If the lock was re-entered decrement the
    count unless forced, in which case unlock. When unlocking notify
    a single waiter, out of any that are waiting.
    Returns the value, throws if this thread is not the lock holder."
-  ([val] (unlock val false))
+  ([val] (unlock! val false))
   ([val force]
    (let [to-notify (atom false)]
      (dosync
@@ -148,14 +140,9 @@
              (do
                (alter locks dissoc val)
                (alter lock-count dissoc val)
-               (reset! to-notify (get-waiter val)))
+               (reset! to-notify (get-waiter! val)))
              (alter lock-count assoc val (dec locked-count)))
            (throw (ex-info (str "Not the lock holder of " val) @locks)))))
      (when @to-notify
        (deliver @to-notify val))
      val)))
-
-;(defn wait-for
-;  "Wait for a notification to be sent to the given value.
-;  There must be a lock held against the value by a thread other
-;  than ourselves at the point this function is called")

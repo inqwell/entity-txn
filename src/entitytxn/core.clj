@@ -71,7 +71,7 @@
   Returns the value as truthy if the lock was obtained, throws otherwise."
   ([val] (lock val -1))
   ([val timeout]
-   (let [locked (l/lock val timeout)]
+   (let [locked (l/lock! val timeout)]
      (if locked
        (swap! (:locks *txn*) conj val)
        (throw (Exception. (str "Could not obtain lock of " val)))))))
@@ -85,7 +85,7 @@
                 :locks
                 deref
                 reverse)]
-    (l/unlock l true)))
+    (l/unlock! l true)))
 
 (defn- in-transaction?
   []
