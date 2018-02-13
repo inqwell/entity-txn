@@ -8,6 +8,9 @@ Documentation can be found [here](https://inqwell.github.io/entity-txn/index.htm
 and [`entity-sql`](https://github.com/inqwell/entity-sql) to provide a CRUD stack in Clojure and
 burying SQL from your application code.
 
+The library includes a lock manager, to lock and wait for arbitrary values when a transaction
+requires exclusive access to a domain dataset.
+
 ## Usage
 
 `[entity/entity-txn "0.1.0"]`
