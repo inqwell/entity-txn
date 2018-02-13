@@ -39,9 +39,9 @@
 
 (defn- not-waiting!
   "Remove the given promise from any waiting on the
-  specified value. If notify is true then check for
-  any further waiters on this val and deliver to one
-  if the given promise is already realized.
+  specified value. If notify is true and the given promise
+  is already realized then check for any further waiters on
+  this val return one. Returns nil in all other cases.
   Must be called from within a transaction"
   ([val prom] (not-waiting! val prom false))
   ([val prom notify]
@@ -52,8 +52,7 @@
           (alter waits dissoc val)
           (alter waits assoc val waiters))
         (when (and notify (realized? prom))
-          (when-let [waiter (get-waiter! val)]
-            (deliver waiter val)))))))
+          (get-waiter! val))))))
 
 (defn- at-least-zero
   "Subtracts the second arg from the first returning
@@ -106,7 +105,9 @@
                (reset! ret-val (deref @wait-promise @rem-timeout :timeout)) ; wait a finite time (could be zero)
                (if (= @ret-val :timeout)
                  (do
-                   (dosync (not-waiting! val @wait-promise true)) ; giving up
+                   (when-let [pass-on-to (dosync
+                                           (not-waiting! val @wait-promise true))] ; giving up, might notify someone else
+                     (deliver pass-on-to val))
                    (reset! wait-promise false))
                  (do                                        ; offered the lock, loop round to acquire
                    (reset! rem-timeout

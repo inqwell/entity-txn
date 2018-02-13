@@ -46,15 +46,13 @@
         (is (empty? @locks))
         (is (empty? @waits))))))
 
-
-
-(deftest stress
-  (testing "Thrash the lock manager")
+(defn- stress-lock-manager
+  [lock-range lock-wait-time]
   (let [locks-todo 5000
         achieved (atom 0)
         timed-out (atom 0)
-        futures (vec (for [number (take locks-todo (cycle (shuffle (range 1 10))))]
-                       (future (if (lock! number 50)
+        futures (vec (for [number (take locks-todo (cycle (shuffle (range 1 lock-range))))]
+                       (future (if (lock! number 10)
                                  (do
                                    (unlock! number)
                                    (swap! achieved inc))
@@ -65,4 +63,10 @@
     (is (= locks-todo (+ @achieved @timed-out)))
     (is (empty? @locks))
     (is (empty? @waits))))
+
+(deftest stress
+  (testing "Thrash the lock manager")
+  (stress-lock-manager 10 10)
+  (stress-lock-manager 10 50)
+  (stress-lock-manager 100 50))
 
