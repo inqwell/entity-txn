@@ -148,7 +148,7 @@
     :assoc t/assoc                ; use typeops when altering maps
     :merge t/merge
     :on-commit (fn [participants actions] ; write the participating instances to the DB using a DB transaction
-                 (println "PART" participants)
+                 ;(println "PART" participants)
                  (sql/with-transaction [*fruit-db*]
                                        (write-txn-state participants)))))
 
@@ -523,6 +523,5 @@
       (let [managed-strawberry (read-instance strawberry)]
         (is (thrown? Exception (assoc managed-strawberry :Fruit "Rambutan")))
         ; Must abort the transaction because thrown? swallows the exception
-        ; and allowing the transaction to commit will generate another one
-        (abort))
-      )))
+        ; and allowing the transaction to commit will generate another one at the DB level
+        (abort)))))

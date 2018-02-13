@@ -10,9 +10,11 @@ burying SQL from your application code.
 
 ## Usage
 
-Not presently hosted. Use `lein install` to place in your local maven
-repo for now and use the version found in `project.clj` for your
-dependency.
+`[entity/entity-txn "0.1.0"]`
+
+## TODO
+Something like a pet store example for better illustration. In the
+meantime the tests show individual use cases.
 
 ## License
 
