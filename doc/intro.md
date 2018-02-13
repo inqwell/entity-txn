@@ -1,3 +1,31 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [entity-txn](#entity-txn)
+    - [Identity](#identity)
+    - [Opening a Transaction](#opening-a-transaction)
+    - [Setting Transaction Defaults](#setting-transaction-defaults)
+- [Instance Lifecycle](#instance-lifecycle)
+    - [Managed Instances](#managed-instances)
+    - [make-new-instance](#make-new-instance)
+    - [create](#create)
+    - [in-creation?](#in-creation)
+    - [delete](#delete)
+    - [assoc and merge](#assoc-and-merge)
+    - [State Transitions](#state-transitions)
+    - [Nested Transactions](#nested-transactions)
+- [Transaction Cycle](#transaction-cycle)
+    - [:do-on-start](#do-on-start)
+    - [body](#body)
+    - [commit](#commit)
+    - [abort](#abort)
+    - [:do-on-end](#do-on-end)
+- [Locks](#locks)
+- [entity-foo](#entity-foo)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # entity-txn
 
 entity-txn is a simple library that manages the state of domain type
