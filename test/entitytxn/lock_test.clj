@@ -10,7 +10,8 @@
       (is (false? @(future (lock! lock-val 500)))) ; 0.5 sec timeout
       (is (= lock-val (unlock! lock-val)))
       (is (empty? @locks))
-      (is (empty? @waits)))))
+      (is (empty? @waits))
+      (is (empty? @thread-locks)))))
 
 (deftest lock-notify
   (let [lock-val "hello"]
@@ -22,7 +23,8 @@
         (is (= lock-val (unlock! lock-val)))
         (is (= lock-val @f))
         (is (empty? @locks))
-        (is (empty? @waits))))))             ; future had the lock
+        (is (empty? @waits))
+        (is (empty? @thread-locks))))))             ; future had the lock
 
 (deftest lock-notify-one-of-two
   (let [lock-val 2
@@ -44,7 +46,8 @@
         (is (= lock-val (unlock! lock-val)))
         (is (zero? (+ @fut1 @fut2)))
         (is (empty? @locks))
-        (is (empty? @waits))))))
+        (is (empty? @waits))
+        (is (empty? @thread-locks))))))
 
 (defn- stress-lock-manager
   [lock-range lock-wait-time]
@@ -62,7 +65,8 @@
     (println "Locks timed out " @timed-out)
     (is (= locks-todo (+ @achieved @timed-out)))
     (is (empty? @locks))
-    (is (empty? @waits))))
+    (is (empty? @waits))
+    (is (empty? @thread-locks))))
 
 (deftest stress
   (testing "Thrash the lock manager")

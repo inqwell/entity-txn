@@ -11,6 +11,9 @@
 (defonce ^:no-doc locks (ref {}))
 (defonce ^:no-doc lock-count (ref {}))
 
+; Maps a thread to the lock values it holds
+(defonce ^:no-doc thread-locks (ref {}))
+
 ; Maps a value to promise(s) thread(s) are waiting for notification.
 ; The value awaited will be delivered to the promise when the lock is released
 (defonce ^:no-doc waits (ref {}))
@@ -61,6 +64,30 @@
   (let [ret (- x y)]
     (if (neg? ret) 0 ret)))
 
+(defn- set-lock-owner!
+  "Establish the current thread as the owner of the lock for val.
+  Must be called from within a transaction."
+  [val]
+  (let [locked (or (get @thread-locks (Thread/currentThread))
+                   #{})]
+    (when (locked val)
+      (throw (ex-info (str "Already the lock owner of " val) {:locks locked})))
+    (alter thread-locks assoc (Thread/currentThread) (conj locked val))))
+
+(defn- remove-lock-owner!
+  "Remove the current thread as the owner of the lock for val.
+  Must be called from within a transaction."
+  [val]
+  (let [locked (or (get @thread-locks (Thread/currentThread))
+                   #{})
+        new-locked (disj locked val)]
+    (when-not (locked val)
+      (throw (ex-info (str "Not the lock owner of " val) {:locks locked})))
+    (if (seq new-locked)
+      (alter thread-locks assoc (Thread/currentThread) new-locked)
+      (alter thread-locks dissoc (Thread/currentThread)))))
+
+
 (defn lock!
   "Attempt to lock the given value obtaining the lock if it is available
   or waiting the specified timeout in milliseconds otherwise. A timeout
@@ -97,6 +124,7 @@
                (reset! wait-promise false)
                (alter locks assoc val (Thread/currentThread))
                (alter lock-count assoc val 1)
+               (set-lock-owner! val)
                (reset! ret-val val))))
          (when @wait-promise
            (if (neg? @rem-timeout)
@@ -141,6 +169,7 @@
              (do
                (alter locks dissoc val)
                (alter lock-count dissoc val)
+               (remove-lock-owner! val)
                (reset! to-notify (get-waiter! val)))
              (alter lock-count assoc val (dec locked-count)))
            (throw (ex-info (str "Not the lock holder of " val) @locks)))))

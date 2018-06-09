@@ -59,7 +59,17 @@
   []
   (:events *txn*))
 
-(defn lock
+(defn- transaction-running?
+  "Throws if a transaction is not currently running. Returns true otherwise."
+  ([] (transaction-running? nil))
+  ([states]
+   (if (:root *txn*)
+     (throw (Exception. "Not in any transaction scope"))
+     (if (or (nil? states) (@(:state *txn*) states))
+       true
+       (throw (Exception. (str "Not in expected transaction state of " states)))))))
+
+(defn lock!
   "Attempt to lock the given value obtaining the lock if it is available
   or waiting the specified timeout in milliseconds otherwise. A timeout of
   zero means unwilling to wait; negative means wait indefinitely.
@@ -69,14 +79,15 @@
   closes, and in reverse order of locking.
 
   Returns the value as truthy if the lock was obtained, throws otherwise."
-  ([val] (lock val -1))
+  ([val] (lock! val -1))
   ([val timeout]
+   (transaction-running?)
    (let [locked (l/lock! val timeout)]
      (if locked
        (swap! (:locks *txn*) conj val)
        (throw (Exception. (str "Could not obtain lock of " val)))))))
 
-(defn ^:no-doc unlock-all
+(defn ^:no-doc unlock-all!
   "Release all locks held by the current transaction. Locks are
   released in the reverse order in which they were initially taken
   out."
@@ -90,16 +101,6 @@
 (defn- in-transaction?
   []
   (and (:actions *txn*) true))
-
-(defn- transaction-running?
-  "Throws if a transaction is not currently running. Returns true otherwise."
-  ([] (transaction-running? nil))
-  ([states]
-    (if (:root *txn*)
-      (throw (Exception. "Not in any transaction scope"))
-      (if (or (nil? states) (@(:state *txn*) states))
-        true
-        (throw (Exception. (str "Not in expected transaction state of " states)))))))
 
 (defn managed?
   "Return whether an instance is managed and therefore able
@@ -331,6 +332,14 @@
     (reset! participants (linked/map))
     (reset! commit-participants (linked/map))))
 
+(defn- write-participant*
+  [action events val]
+  (condp = action
+    :create (p/write-entity events val)
+    :mutate (p/write-entity events (:new-val val))
+    :delete (p/delete-entity events val)
+    (throw (Exception. "Unexpected action"))))
+
 (defn write-txn-state
   "Write the values contained in the current transaction to backing store
   via TxnEvents.write-entity for create and mutate and TxnEvents.delete-entity
@@ -342,11 +351,9 @@
   (let [actions      @(:actions *txn*)
         events       (get-events)]
     (doseq [[id val] participants]
-      (condp = (get actions id)
-        :create (p/write-entity events val)
-        :mutate (p/write-entity events (:new-val val))
-        :delete (p/delete-entity events val)
-        (throw (Exception. "Unexpected action"))))))
+      (write-participant* (get actions id)
+                          events
+                          val))))
 
 (defn ^:no-doc do-on-start
   []
@@ -422,7 +429,7 @@
              (when-not (transaction-ended?)
                (commit))
              (finally
-               (unlock-all)
+               (unlock-all!)
                (do-on-end)))))
        nil)))
 
