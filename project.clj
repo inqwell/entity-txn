@@ -1,11 +1,11 @@
-(defproject entity/entity-txn "0.1.2"
+(defproject entity/entity-txn "0.1.3"
   :description "CRUD Transactions"
   :url "https://github.com/inqwell/entity-txn"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [frankiesardo/linked "1.2.9"]
-                 [entity/entity-core "0.1.1"]]
+                 [entity/entity-core "0.1.2"]]
   :plugins [[lein-codox "0.10.3"]]
   :codox {:output-path "codox/entity-txn"
           :source-uri "https://github.com/inqwell/entity-txn/blob/master/{filepath}#L{line}"}
