@@ -31,3 +31,22 @@
     be determined then throws. An identity must be unique across
     participating instances."))
 
+(deftype NilTxnEvents []
+  TxnEvents
+  (read-entity [_ key-val args]
+    nil)
+  (write-entity [_ entity-val]
+    nil)
+  (delete-entity [txn-event entity-val]
+    nil)
+  (create-entity [this entity-val]
+    nil)
+  (new-instance [_ args]
+    nil)
+  (mutate-entity [_ old-val new-val]
+    nil)
+  (destroy-entity [_ entity-val]
+    nil)
+  (identity-of [_ entity-val]
+    nil))
+

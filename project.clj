@@ -9,6 +9,6 @@
   :plugins [[lein-codox "0.10.3"]]
   :codox {:output-path "codox/entity-txn"
           :source-uri "https://github.com/inqwell/entity-txn/blob/master/{filepath}#L{line}"}
-  :profiles {:dev {:dependencies [[typeops "0.1.1"]
+  :profiles {:dev {:dependencies [[typeops "0.1.2"]
                                   [com.h2database/h2 "1.4.195"]
                                   [entity/entity-sql "0.1.1"]]}})

@@ -148,7 +148,6 @@
     :assoc t/assoc                ; use typeops when altering maps
     :merge t/merge
     :on-commit (fn [participants actions] ; write the participating instances to the DB using a DB transaction
-                 ;(println "PART" participants)
                  (sql/with-transaction [*fruit-db*]
                                        (write-txn-state participants)))))
 
@@ -518,10 +517,8 @@
 (deftest cannot-change-id
   (create-fruits-table)
   (write-instance strawberry)
-  (testing "Changing an id field is not allowed"
-    (in-transaction
-      (let [managed-strawberry (read-instance strawberry)]
-        (is (thrown? Exception (assoc managed-strawberry :Fruit "Rambutan")))
-        ; Must abort the transaction because thrown? swallows the exception
-        ; and allowing the transaction to commit will generate another one at the DB level
-        (abort)))))
+  (testing "Changing an id field is not allowed (trapped during commit)"
+    (is (thrown? Exception
+      (in-transaction
+        (let [managed-strawberry (read-instance strawberry)]
+          (assoc managed-strawberry :Fruit "Rambutan")))))))

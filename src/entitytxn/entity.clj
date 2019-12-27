@@ -57,5 +57,5 @@
 (defn entity-txn-events
   "Helper function to return a EntityTxnEvents."
   []
-  (EntityTxnEvents.))
+  (->EntityTxnEvents))
 

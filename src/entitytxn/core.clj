@@ -6,6 +6,7 @@
             [entitytxn.protocols :as p]))
 
 (def ^:dynamic ^:no-doc *txn* {:root true
+                               :events (p/->NilTxnEvents)
                                :assoc clojure.core/assoc
                                :merge clojure.core/merge})
 
@@ -14,7 +15,7 @@
   This function will typically be called from an application's state
   management setup
 
-   + `:events connect transaction state to type and io system (mandatory)
+   + `:events connect transaction state to type and io system (defaults to none)
    + `:assoc` how to assoc maps (defaults to clojure.core/assoc)
    + `:merge` how to merge maps (defaults to clojure.core/merge)
    + `:on-commit` function accepting two arguments `[participants actions]` to call when the
@@ -28,7 +29,8 @@
                 on-abort
                 assoc
                 merge]
-         :or {assoc clojure.core/assoc
+         :or {events (p/->NilTxnEvents)
+              assoc clojure.core/assoc
               merge clojure.core/merge}} defaults]
     (alter-var-root #'*txn* (constantly {:events events
                                          :on-commit on-commit
@@ -271,7 +273,7 @@
   (if (managed? old-val)
     (do
       (transaction-running? #{:started :committing})
-      (let [id (ensure-no-id-change new-val)]
+      (let [id (get-identity new-val)]
         (if (participating-as id :delete)
           (throw (ex-info "Attempt to mutate deleted instance" old-val)))
         (if (joined-inner? id (get-parent-transaction))
@@ -384,9 +386,11 @@
           (doseq [[id instance] participants]
             (condp = (get actions id)
               :mutate (do
-                        (let [{:keys [old-val new-val]} instance]
+                        (let [{:keys [old-val new-val]} instance
+                              mutated (p/mutate-entity events old-val new-val)]
+                          (ensure-no-id-change mutated)
                           (set-in-txn-mutate new-val
-                                             (p/mutate-entity events old-val new-val))))
+                                             mutated)))
               (do) ; nothing for create/delete
               ))
           ; Pass the current participants to any :on-commit function
