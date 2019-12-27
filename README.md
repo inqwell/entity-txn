@@ -13,7 +13,7 @@ requires exclusive access to a domain dataset.
 
 ## Usage
 
-`[entity/entity-txn "0.1.0"]`
+`[entity/entity-txn "0.1.3"]`
 
 ## TODO
 Something like a pet store example for better illustration. In the
