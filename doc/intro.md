@@ -186,3 +186,7 @@ and to ensure such instances are managed, there is `entitytxn.aggregate/aggregat
 If you are not using entity-core and instead providing your own type system, you might find
 it useful to provide your own such function. This is quite straightforward to do, for
 example using the excellent [`specter`](https://github.com/nathanmarz/specter) library.
+
+## Usage
+
+`[entity/entity-txn "0.1.3"]`
