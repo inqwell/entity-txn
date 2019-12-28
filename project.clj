@@ -6,7 +6,7 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [frankiesardo/linked "1.2.9"]
                  [entity/entity-core "0.1.2"]]
-  :plugins [[lein-codox "0.10.3"]]
+  :plugins [[lein-codox "0.10.7"]]
   :codox {:output-path "codox/entity-txn"
           :source-uri "https://github.com/inqwell/entity-txn/blob/master/{filepath}#L{line}"}
   :profiles {:dev {:dependencies [[typeops "0.1.2"]
