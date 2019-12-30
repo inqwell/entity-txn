@@ -86,7 +86,9 @@
    (transaction-running?)
    (let [locked (l/lock! val timeout)]
      (if locked
-       (swap! (:locks *txn*) conj val)
+       (do
+         (swap! (:locks *txn*) conj val)
+         val)
        (throw (Exception. (str "Could not obtain lock of " val)))))))
 
 (defn ^:no-doc unlock-all!

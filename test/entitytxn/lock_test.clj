@@ -1,6 +1,7 @@
 (ns entitytxn.lock-test
   (:require [clojure.test :refer :all]
-            [entitytxn.lock :refer :all]))
+            [entitytxn.lock :refer :all]
+            [entitytxn.core :as t]))
 
 (deftest lock-simple
   (let [lock-val "hello"]
@@ -18,10 +19,12 @@
     (testing "Lock something, other thread waits for lock"
       (is (= lock-val (lock! lock-val)))      ; lock it
       (let [f (future (lock! lock-val 2000)   ; wait for long enough
+                      (is (empty? @waits))    ; no one waiting anymore
                       (unlock! lock-val))]    ; tidy up!
-        (Thread/sleep 1000)                  ; wait less time then unlock
-        (is (= lock-val (unlock! lock-val)))
-        (is (= lock-val @f))
+        (Thread/sleep 1000)                   ; wait less time then unlock
+        (is (= 1 (count @waits)))             ; someone is waiting
+        (is (= lock-val (unlock! lock-val)))  ; give lock to future
+        (is (= lock-val @f))                  ; wait for future to unlock
         (is (empty? @locks))
         (is (empty? @waits))
         (is (empty? @thread-locks))))))             ; future had the lock
@@ -74,3 +77,16 @@
   (stress-lock-manager 10 50)
   (stress-lock-manager 100 50))
 
+(deftest lock-txn-throws
+  (let [lock-val "hello"
+        ex-msg "throw inside txn"]
+    (testing "Lock a value in a transaction which throws - lock is released automatically"
+      (try
+        (t/in-transaction
+          (is (= lock-val (t/lock! lock-val)))
+          (throw (Exception. ex-msg)))
+        (catch Exception e
+          (is (= ex-msg (.getMessage e)))))
+      (is (empty? @locks))
+      (is (empty? @waits))
+      (is (empty? @thread-locks)))))

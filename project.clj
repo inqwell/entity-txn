@@ -1,4 +1,4 @@
-(defproject entity/entity-txn "0.1.3"
+(defproject entity/entity-txn "0.1.4"
   :description "CRUD Transactions"
   :url "https://github.com/inqwell/entity-txn"
   :license {:name "Eclipse Public License"

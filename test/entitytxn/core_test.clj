@@ -327,7 +327,7 @@
     (in-transaction
       (is (thrown? Exception (create strawberry))))))
 
-        (deftest mutate-and-related
+(deftest mutate-and-related
   (create-fruits-table)
   (create-nutrition-table)
   (write-instance strawberry)
